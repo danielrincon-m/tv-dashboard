@@ -96,6 +96,28 @@ body {
   background: var(--warn);
 }
 
+.fullscreen {
+  position: fixed;
+  top: 1.2vh;
+  right: 1vw;
+  z-index: 10;
+  padding: 1vh 1.4vw;
+  border: 2px solid var(--muted);
+  border-radius: 1vh;
+  font: inherit;
+  font-size: 2.4vh;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--label-bg);
+  cursor: pointer;
+}
+
+.fullscreen:hover,
+.fullscreen:focus {
+  border-color: var(--text);
+  background: var(--divider);
+}
+
 .tradingview-widget-container,
 .tradingview-widget-container__widget {
   width: 100%;

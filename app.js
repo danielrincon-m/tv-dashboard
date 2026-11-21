@@ -124,8 +124,29 @@ function element(tag, className, text) {
   return node;
 }
 
-function scheduleReload(seconds) {
-  setTimeout(() => window.location.reload(), seconds * 1000);
+let retryTimer = null;
+
+function fullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement;
+}
+
+/** Rebuilds the widgets in place while in full screen, because reloading the page leaves full screen. */
+function refresh() {
+  if (fullscreenElement()) {
+    renderPage();
+  } else {
+    window.location.reload();
+  }
+}
+
+function scheduleRetry() {
+  if (retryTimer) {
+    return;
+  }
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    refresh();
+  }, CONFIG.retryAfterMinutes * 60 * 1000);
 }
 
 function showFailure(cell, message) {
@@ -133,7 +154,7 @@ function showFailure(cell, message) {
     return;
   }
   cell.appendChild(element('div', 'status', message + ' Retrying in ' + CONFIG.retryAfterMinutes + ' min.'));
-  scheduleReload(CONFIG.retryAfterMinutes * 60);
+  scheduleRetry();
 }
 
 function showNotice(message) {
@@ -205,10 +226,18 @@ function quotesZoom(cell, rowCount) {
   return Math.min(QUOTES_MAX_ZOOM, cell.clientHeight / (rowCount * QUOTES_ROW_PX + QUOTES_HEADER_PX));
 }
 
+function fitQuotes() {
+  const zoom = document.querySelector('.zoomed');
+  if (zoom) {
+    zoom.style.setProperty('--zoom', quotesZoom(zoom.parentElement, Number(zoom.dataset.rows)));
+  }
+}
+
 function mountQuotes(cell, charts) {
   const zoom = element('div', 'zoomed');
-  zoom.style.setProperty('--zoom', quotesZoom(cell, charts.length));
+  zoom.dataset.rows = charts.length;
   cell.appendChild(zoom);
+  fitQuotes();
   mountEmbed(cell, zoom, QUOTES_SCRIPT_URL, {
     width: '100%',
     height: '100%',
@@ -225,17 +254,35 @@ function mountQuotes(cell, charts) {
   }, 'Quotes');
 }
 
-function main() {
+function requestFullscreen() {
+  const root = document.documentElement;
+  (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
+}
+
+/** The button shows only outside full screen; the remote's Back key leaves full screen. */
+function addFullscreenButton() {
+  if (!document.fullscreenEnabled && !document.webkitFullscreenEnabled) {
+    return;
+  }
+  const button = element('button', 'fullscreen', 'Full screen');
+  button.type = 'button';
+  button.addEventListener('click', requestFullscreen);
+  document.body.appendChild(button);
+  const sync = () => {
+    button.hidden = Boolean(fullscreenElement());
+  };
+  document.addEventListener('fullscreenchange', sync);
+  document.addEventListener('webkitfullscreenchange', sync);
+}
+
+/** Builds the grid and starts its widgets, replacing any previous ones. */
+function renderPage() {
   const settings = readSettings(CONFIG, window.location.search);
   const plan = planGrid(settings, CONFIG.showQuotes);
   const grid = document.getElementById('grid');
+  grid.textContent = '';
   grid.style.setProperty('--columns', settings.columns);
   grid.style.setProperty('--rows', plan.rows);
-
-  if (plan.widgetCount > CONFIG.maxWidgets) {
-    showNotice(plan.widgetCount + ' widgets configured: more than ' + CONFIG.maxWidgets
-      + ' may run the TV browser out of memory.');
-  }
 
   const mounts = settings.charts.map((chart) => {
     const cell = addCell(grid);
@@ -249,7 +296,18 @@ function main() {
     mounts.push(() => mountQuotes(cell, settings.charts));
   }
   mounts.forEach((mount, i) => setTimeout(mount, i * CONFIG.staggerSeconds * 1000));
-  scheduleReload(CONFIG.reloadEveryHours * 3600);
+  return plan;
+}
+
+function main() {
+  const plan = renderPage();
+  if (plan.widgetCount > CONFIG.maxWidgets) {
+    showNotice(plan.widgetCount + ' widgets configured: more than ' + CONFIG.maxWidgets
+      + ' may run the TV browser out of memory.');
+  }
+  addFullscreenButton();
+  window.addEventListener('resize', fitQuotes);
+  setInterval(refresh, CONFIG.reloadEveryHours * 3600 * 1000);
 }
 
 main();

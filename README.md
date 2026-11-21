@@ -19,7 +19,7 @@ Everything lives in the `CONFIG` object at the top of `app.js`:
 | `chartFontSize` | Size of the chart axis numbers. |
 | `showQuotes` | Shows the price and daily % change of every chart symbol in the last column, stretched over the free cells. |
 | `staggerSeconds` | Delay between widgets at start-up, so the TV doesn't load them all at once. |
-| `reloadEveryHours` | Full page reload, so the TV browser doesn't hang after running all day. |
+| `reloadEveryHours` | Reloads the widgets so the TV browser doesn't hang after running all day (in full screen, without leaving it). |
 | `loadTimeoutSeconds`, `retryAfterMinutes` | A widget that hasn't loaded after the timeout shows a message, and the page retries after that many minutes. |
 | `maxWidgets` | Above this number of widgets the page shows a memory warning. |
 | `locale` | TradingView language (`'es'`, `'en'`, ...). |
@@ -50,7 +50,8 @@ The quotes cell only appears when the layout has a free cell left after the char
 1. Press **Home** on the remote and open the **Internet** app.
 2. Select the address bar and type the page URL (with parameters, if you want a custom grid).
 3. Open the browser menu and add it to **Bookmarks**, or set it as the **homepage** in the browser settings, so it opens in one click next time.
-4. Keep the screen on: in the TV settings turn off **Auto Protection Time** (screen saver) and **Auto Power Off**. Menu names vary by firmware; search for them in **Settings**.
+4. Select **Full screen** (top-right corner) to hide the browser bar. The remote's **Back** key leaves full screen.
+5. Keep the screen on: in the TV settings turn off **Auto Protection Time** (screen saver) and **Auto Power Off**. Menu names vary by firmware; search for them in **Settings**.
 
 ## Notes
 
