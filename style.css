@@ -96,7 +96,13 @@ body {
   background: var(--warn);
 }
 
-/* TradingView widgets have no font-size option, so they are rendered smaller and scaled up. */
+.tradingview-widget-container,
+.tradingview-widget-container__widget {
+  width: 100%;
+  height: 100%;
+}
+
+/* The quotes widget has no font-size option, so it is rendered smaller and scaled up. */
 .zoomed {
   position: absolute;
   top: 0;
@@ -105,10 +111,4 @@ body {
   height: calc(100% / var(--zoom));
   transform: scale(var(--zoom));
   transform-origin: 0 0;
-}
-
-.zoomed .tradingview-widget-container,
-.zoomed .tradingview-widget-container__widget {
-  width: 100%;
-  height: 100%;
 }

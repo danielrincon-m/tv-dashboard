@@ -1,6 +1,7 @@
 # TV Dashboard
 
-Full-screen grid of TradingView charts for a TV browser (built for a Samsung QN90C running Tizen).
+Full-screen grid of TradingView candlestick charts for a TV browser (built for a Samsung QN90C running Tizen).
+Charts use TradingView's free Symbol Overview widget, which needs about half the memory of the Advanced Chart.
 Plain HTML + CSS + JS: no build step, no libraries, no API keys.
 
 Live page: https://danielrincon-m.github.io/tv-dashboard/
@@ -12,10 +13,12 @@ Everything lives in the `CONFIG` object at the top of `app.js`:
 | Field | What it does |
 | --- | --- |
 | `charts` | Charts in display order: `{ symbol: 'NASDAQ:NVDA', interval: 'D' }`. Use TradingView's `EXCHANGE:TICKER` (search the symbol on tradingview.com; it is in the page URL). |
-| `interval` | `'1'`, `'5'`, `'15'`, `'60'`, `'240'` (minutes), `'D'`, `'W'`, `'M'`, or hours such as `'4h'`. |
+| `interval` | Candle size: `'1'`, `'5'`, `'15'`, `'60'`, `'240'` (minutes), `'D'`, `'W'`, `'M'`, or hours such as `'4h'`. |
+| `range` | Optional, per chart: how much history to show: `'1d'`, `'5d'`, `'1m'`, `'3m'`, `'6m'`, `'12m'`, `'60m'`, `'all'`. Defaults to `'3m'` for daily candles and `'5d'` for hourly ones. |
 | `columns`, `rows` | Grid size. Rows are added when the charts don't fit. |
-| `chartZoom` | Enlarges every chart: higher shows fewer, wider candles and bigger axis text. `1` is TradingView's default view. |
+| `chartFontSize` | Size of the chart axis numbers. |
 | `showQuotes` | Shows the price and daily % change of every chart symbol in the last column, stretched over the free cells. |
+| `staggerSeconds` | Delay between widgets at start-up, so the TV doesn't load them all at once. |
 | `reloadEveryHours` | Full page reload, so the TV browser doesn't hang after running all day. |
 | `loadTimeoutSeconds`, `retryAfterMinutes` | A widget that hasn't loaded after the timeout shows a message, and the page retries after that many minutes. |
 | `maxWidgets` | Above this number of widgets the page shows a memory warning. |
@@ -31,6 +34,7 @@ The URL overrides `CONFIG` without editing code:
 | --- | --- | --- |
 | `s` | `s=NASDAQ:QQQ,AMEX:VOO` | Symbols, comma separated. |
 | `tf` | `tf=D,4h` | Interval per symbol, same order as `s`. Missing ones reuse the last given (or `D`). |
+| `r` | `r=6m,1m` | Range per symbol, same order as the charts. |
 | `layout` | `layout=2x1` | `columns x rows`. |
 
 Examples:
@@ -50,6 +54,6 @@ The quotes cell only appears when the layout has a free cell left after the char
 
 ## Notes
 
-- An unknown symbol shows TradingView's own "This symbol doesn't exist" notice inside its cell; the large label on top tells you which one it is.
+- An unknown symbol shows TradingView's own "Invalid symbol" notice inside its cell; the large label on top tells you which one it is.
 - Each widget is an iframe. Eight is a safe number for the TV browser.
 - To try it on a computer: `python3 -m http.server` in this folder, then open http://localhost:8000.

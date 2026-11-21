@@ -4,6 +4,7 @@ const CONFIG = {
   columns: 3,
   rows: 3,
   // interval: TradingView codes ('1', '15', '60', '240', 'D', 'W', 'M') or hours such as '4h'.
+  // range (optional): how much history to show: '1d', '5d', '1m', '3m', '6m', '12m', '60m' or 'all'.
   charts: [
     { symbol: 'NASDAQ:QQQ', interval: 'D' },
     { symbol: 'NASDAQ:VXUS', interval: 'D' },
@@ -15,11 +16,12 @@ const CONFIG = {
     { symbol: 'NASDAQ:ANT', interval: '60' },
     { symbol: 'BINANCE:BTCUSDT', interval: '240' },
   ],
-  // Draws each chart smaller and scales it up: fewer, wider candles and bigger axis text. 1 = TradingView's default.
-  chartZoom: 1.4,
+  chartFontSize: 18,
   // Shows price and daily change of every chart symbol in the last column, over the free cells.
   showQuotes: true,
   locale: 'es',
+  // Widgets start one after another so the TV doesn't boot them all at once.
+  staggerSeconds: 1,
   reloadEveryHours: 6,
   retryAfterMinutes: 5,
   loadTimeoutSeconds: 30,
@@ -27,12 +29,15 @@ const CONFIG = {
   maxWidgets: 8,
 };
 
-const TV_SCRIPT_URL = 'https://s3.tradingview.com/tv.js';
-const QUOTES_SCRIPT_URL = 'https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js';
+const EMBED_URL = 'https://s3.tradingview.com/external-embedding/';
+const CHART_SCRIPT_URL = EMBED_URL + 'embed-widget-symbol-overview.js';
+const QUOTES_SCRIPT_URL = EMBED_URL + 'embed-widget-market-overview.js';
 // Measured size of the Market Overview list, used to zoom it until every row fills the cell.
 const QUOTES_ROW_PX = 60;
 const QUOTES_HEADER_PX = 24;
 const QUOTES_MAX_ZOOM = 2;
+const UP_COLOR = '#089981';
+const DOWN_COLOR = '#f23645';
 
 function splitList(value) {
   return value ? value.split(',').map((item) => item.trim()).filter(Boolean) : [];
@@ -47,6 +52,15 @@ function toTradingViewInterval(value) {
   return /^1?[dw]$/i.test(text) ? text.slice(-1).toUpperCase() : text;
 }
 
+/** A range that shows a few dozen candles of the given interval. */
+function defaultRange(interval) {
+  const ranges = { D: '3m', W: '12m', M: '60m' };
+  if (ranges[interval]) {
+    return ranges[interval];
+  }
+  return Number(interval) >= 60 ? '5d' : '1d';
+}
+
 function intervalLabel(interval) {
   if (/^[DWM]$/.test(interval)) {
     return '1' + interval;
@@ -59,21 +73,29 @@ function tickerOf(symbol) {
   return symbol.split(':').pop();
 }
 
-/** Merges CONFIG with the URL parameters `s` (symbols), `tf` (intervals) and `layout` (columns x rows). */
+/**
+ * Merges CONFIG with the URL parameters `s` (symbols), `tf` (intervals), `r` (ranges)
+ * and `layout` (columns x rows).
+ */
 function readSettings(config, query) {
   const params = new URLSearchParams(query);
   const symbols = splitList(params.get('s'));
   const intervals = splitList(params.get('tf'));
+  const ranges = splitList(params.get('r'));
   const layout = /^(\d+)x(\d+)$/i.exec(params.get('layout') || '');
   const baseCharts = symbols.length ? symbols.map((symbol) => ({ symbol: symbol })) : config.charts;
   const lastInterval = intervals[intervals.length - 1] || 'D';
   return {
     columns: Math.max(1, layout ? Number(layout[1]) : config.columns),
     rows: Math.max(1, layout ? Number(layout[2]) : config.rows),
-    charts: baseCharts.map((chart, i) => ({
-      symbol: chart.symbol.toUpperCase(),
-      interval: toTradingViewInterval(intervals[i] || chart.interval || lastInterval),
-    })),
+    charts: baseCharts.map((chart, i) => {
+      const interval = toTradingViewInterval(intervals[i] || chart.interval || lastInterval);
+      return {
+        symbol: chart.symbol.toUpperCase(),
+        interval: interval,
+        range: (ranges[i] || chart.range || defaultRange(interval)).toLowerCase(),
+      };
+    }),
   };
 }
 
@@ -120,74 +142,74 @@ function showNotice(message) {
   setTimeout(() => notice.remove(), 30000);
 }
 
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = true;
-    script.onload = resolve;
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
+/** Inserts a TradingView embed script; the cell shows a failure if it never creates its iframe. */
+function mountEmbed(cell, parent, scriptUrl, widgetConfig, name) {
+  const container = element('div', 'tradingview-widget-container');
+  const script = document.createElement('script');
+  script.src = scriptUrl;
+  script.async = true;
+  script.text = JSON.stringify(widgetConfig);
+  script.onerror = () => showFailure(cell, name + ' did not load.');
+  container.appendChild(element('div', 'tradingview-widget-container__widget'));
+  container.appendChild(script);
+  parent.appendChild(container);
+  setTimeout(() => {
+    if (!cell.querySelector('iframe')) {
+      showFailure(cell, name + ' did not load.');
+    }
+  }, CONFIG.loadTimeoutSeconds * 1000);
 }
 
-function addChartCell(grid, chart) {
+function addCell(grid) {
   const cell = element('section', 'cell');
-  const label = element('div', 'label');
-  label.appendChild(element('span', 'label__symbol', tickerOf(chart.symbol)));
-  label.appendChild(element('span', 'label__interval', intervalLabel(chart.interval)));
-  cell.appendChild(label);
   grid.appendChild(cell);
   return cell;
 }
 
-function mountChart(cell, chart, index) {
-  const target = element('div', 'zoomed');
-  target.style.setProperty('--zoom', CONFIG.chartZoom);
-  target.id = 'chart-' + index;
-  cell.appendChild(target);
-  const timeout = setTimeout(
-    () => showFailure(cell, chart.symbol + ' did not load.'),
-    CONFIG.loadTimeoutSeconds * 1000
-  );
-  const widget = new TradingView.widget({
-    container_id: target.id,
+function addChartLabel(cell, chart) {
+  const label = element('div', 'label');
+  label.appendChild(element('span', 'label__symbol', tickerOf(chart.symbol)));
+  label.appendChild(element('span', 'label__interval',
+    intervalLabel(chart.interval) + ' · ' + chart.range.toUpperCase()));
+  cell.appendChild(label);
+}
+
+function mountChart(cell, chart) {
+  const widgetInterval = /^[DWM]$/.test(chart.interval) ? '1' + chart.interval : chart.interval;
+  mountEmbed(cell, cell, CHART_SCRIPT_URL, {
+    symbols: [[tickerOf(chart.symbol), chart.symbol + '|' + chart.range.toUpperCase()]],
+    dateRanges: [chart.range + '|' + widgetInterval],
+    chartOnly: true,
+    chartType: 'candlesticks',
+    width: '100%',
+    height: '100%',
     autosize: true,
-    symbol: chart.symbol,
-    interval: chart.interval,
-    theme: 'dark',
-    style: '1',
+    colorTheme: 'dark',
+    isTransparent: true,
     locale: CONFIG.locale,
-    hide_top_toolbar: true,
-    hide_side_toolbar: true,
-    hide_legend: true,
-    allow_symbol_change: false,
-    save_image: false,
-    // Otherwise TradingView restores the last zoom it saved, so the visible range drifts between reloads.
-    doNotStoreSettings: true,
-    details: false,
-    hotlist: false,
-    calendar: false,
-  });
-  widget.ready(() => clearTimeout(timeout));
+    fontSize: String(CONFIG.chartFontSize),
+    showVolume: false,
+    showMA: false,
+    scalePosition: 'right',
+    scaleMode: 'Normal',
+    upColor: UP_COLOR,
+    downColor: DOWN_COLOR,
+    borderUpColor: UP_COLOR,
+    borderDownColor: DOWN_COLOR,
+    wickUpColor: UP_COLOR,
+    wickDownColor: DOWN_COLOR,
+  }, chart.symbol);
 }
 
 function quotesZoom(cell, rowCount) {
   return Math.min(QUOTES_MAX_ZOOM, cell.clientHeight / (rowCount * QUOTES_ROW_PX + QUOTES_HEADER_PX));
 }
 
-function mountQuotes(grid, charts, rowSpan) {
-  const cell = element('section', 'cell');
-  cell.style.gridColumn = '-2 / -1';
-  cell.style.gridRow = 'span ' + rowSpan + ' / -1';
-  grid.appendChild(cell);
+function mountQuotes(cell, charts) {
   const zoom = element('div', 'zoomed');
   zoom.style.setProperty('--zoom', quotesZoom(cell, charts.length));
-  const container = element('div', 'tradingview-widget-container');
-  const script = document.createElement('script');
-  script.src = QUOTES_SCRIPT_URL;
-  script.async = true;
-  script.text = JSON.stringify({
+  cell.appendChild(zoom);
+  mountEmbed(cell, zoom, QUOTES_SCRIPT_URL, {
     width: '100%',
     height: '100%',
     colorTheme: 'dark',
@@ -200,17 +222,7 @@ function mountQuotes(grid, charts, rowSpan) {
       title: 'Hoy',
       symbols: charts.map((chart) => ({ s: chart.symbol })),
     }],
-  });
-  script.onerror = () => showFailure(cell, 'Quotes did not load.');
-  container.appendChild(element('div', 'tradingview-widget-container__widget'));
-  container.appendChild(script);
-  zoom.appendChild(container);
-  cell.appendChild(zoom);
-  setTimeout(() => {
-    if (!cell.querySelector('iframe')) {
-      showFailure(cell, 'Quotes did not load.');
-    }
-  }, CONFIG.loadTimeoutSeconds * 1000);
+  }, 'Quotes');
 }
 
 function main() {
@@ -225,15 +237,18 @@ function main() {
       + ' may run the TV browser out of memory.');
   }
 
-  const chartCells = settings.charts.map((chart) => addChartCell(grid, chart));
+  const mounts = settings.charts.map((chart) => {
+    const cell = addCell(grid);
+    addChartLabel(cell, chart);
+    return () => mountChart(cell, chart);
+  });
   if (plan.withQuotes) {
-    mountQuotes(grid, settings.charts, plan.quotesRowSpan);
+    const cell = addCell(grid);
+    cell.style.gridColumn = '-2 / -1';
+    cell.style.gridRow = 'span ' + plan.quotesRowSpan + ' / -1';
+    mounts.push(() => mountQuotes(cell, settings.charts));
   }
-
-  loadScript(TV_SCRIPT_URL).then(
-    () => chartCells.forEach((cell, i) => mountChart(cell, settings.charts[i], i)),
-    () => chartCells.forEach((cell) => showFailure(cell, 'Could not reach TradingView. Check the internet connection.'))
-  );
+  mounts.forEach((mount, i) => setTimeout(mount, i * CONFIG.staggerSeconds * 1000));
   scheduleReload(CONFIG.reloadEveryHours * 3600);
 }
 
