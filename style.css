@@ -39,14 +39,6 @@ body {
   background: var(--bg);
 }
 
-.widget {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-}
-
 .label {
   position: absolute;
   top: 0.8vh;
@@ -104,16 +96,19 @@ body {
   background: var(--warn);
 }
 
-/* The quotes widget has no font-size option, so it is rendered smaller and scaled up. */
-.quotes {
+/* TradingView widgets have no font-size option, so they are rendered smaller and scaled up. */
+.zoomed {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: calc(100% / var(--zoom));
   height: calc(100% / var(--zoom));
   transform: scale(var(--zoom));
   transform-origin: 0 0;
 }
 
-.quotes .tradingview-widget-container,
-.quotes .tradingview-widget-container__widget {
+.zoomed .tradingview-widget-container,
+.zoomed .tradingview-widget-container__widget {
   width: 100%;
   height: 100%;
 }

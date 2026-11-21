@@ -14,6 +14,7 @@ Everything lives in the `CONFIG` object at the top of `app.js`:
 | `charts` | Charts in display order: `{ symbol: 'NASDAQ:NVDA', interval: 'D' }`. Use TradingView's `EXCHANGE:TICKER` (search the symbol on tradingview.com; it is in the page URL). |
 | `interval` | `'1'`, `'5'`, `'15'`, `'60'`, `'240'` (minutes), `'D'`, `'W'`, `'M'`, or hours such as `'4h'`. |
 | `columns`, `rows` | Grid size. Rows are added when the charts don't fit. |
+| `chartZoom` | Enlarges every chart: higher shows fewer, wider candles and bigger axis text. `1` is TradingView's default view. |
 | `showQuotes` | Fills the first free cell with the price and daily % change of every chart symbol. |
 | `reloadEveryHours` | Full page reload, so the TV browser doesn't hang after running all day. |
 | `loadTimeoutSeconds`, `retryAfterMinutes` | A widget that hasn't loaded after the timeout shows a message, and the page retries after that many minutes. |

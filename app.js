@@ -15,6 +15,8 @@ const CONFIG = {
     { symbol: 'NASDAQ:ANT', interval: '60' },
     { symbol: 'BINANCE:BTCUSDT', interval: '240' },
   ],
+  // Draws each chart smaller and scales it up: fewer, wider candles and bigger axis text. 1 = TradingView's default.
+  chartZoom: 1.4,
   // Fills the first free cell with price and daily change of every chart symbol.
   showQuotes: true,
   locale: 'es',
@@ -135,7 +137,8 @@ function addChartCell(grid, chart) {
 }
 
 function mountChart(cell, chart, index) {
-  const target = element('div', 'widget');
+  const target = element('div', 'zoomed');
+  target.style.setProperty('--zoom', CONFIG.chartZoom);
   target.id = 'chart-' + index;
   cell.appendChild(target);
   const timeout = setTimeout(
@@ -155,6 +158,8 @@ function mountChart(cell, chart, index) {
     hide_legend: true,
     allow_symbol_change: false,
     save_image: false,
+    // Otherwise TradingView restores the last zoom it saved, so the visible range drifts between reloads.
+    doNotStoreSettings: true,
     details: false,
     hotlist: false,
     calendar: false,
@@ -169,7 +174,7 @@ function quotesZoom(cell, rowCount) {
 function mountQuotes(grid, charts) {
   const cell = element('section', 'cell');
   grid.appendChild(cell);
-  const zoom = element('div', 'quotes');
+  const zoom = element('div', 'zoomed');
   zoom.style.setProperty('--zoom', quotesZoom(cell, charts.length));
   const container = element('div', 'tradingview-widget-container');
   const script = document.createElement('script');
