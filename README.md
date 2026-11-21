@@ -15,7 +15,7 @@ Everything lives in the `CONFIG` object at the top of `app.js`:
 | `interval` | `'1'`, `'5'`, `'15'`, `'60'`, `'240'` (minutes), `'D'`, `'W'`, `'M'`, or hours such as `'4h'`. |
 | `columns`, `rows` | Grid size. Rows are added when the charts don't fit. |
 | `chartZoom` | Enlarges every chart: higher shows fewer, wider candles and bigger axis text. `1` is TradingView's default view. |
-| `showQuotes` | Fills the first free cell with the price and daily % change of every chart symbol. |
+| `showQuotes` | Shows the price and daily % change of every chart symbol in the last column, stretched over the free cells. |
 | `reloadEveryHours` | Full page reload, so the TV browser doesn't hang after running all day. |
 | `loadTimeoutSeconds`, `retryAfterMinutes` | A widget that hasn't loaded after the timeout shows a message, and the page retries after that many minutes. |
 | `maxWidgets` | Above this number of widgets the page shows a memory warning. |
@@ -35,6 +35,7 @@ The URL overrides `CONFIG` without editing code:
 
 Examples:
 
+- The previous 4 x 2 grid: `https://danielrincon-m.github.io/tv-dashboard/?layout=4x2`
 - Two daily charts side by side: `https://danielrincon-m.github.io/tv-dashboard/?s=NASDAQ:QQQ,AMEX:VOO&tf=D,D&layout=2x1`
 - Three charts plus the quotes cell: `https://danielrincon-m.github.io/tv-dashboard/?s=NASDAQ:NVDA,NASDAQ:ANT,BINANCE:BTCUSDT&tf=D,1h,4h&layout=2x2`
 

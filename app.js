@@ -1,8 +1,8 @@
 'use strict';
 
 const CONFIG = {
-  columns: 4,
-  rows: 2,
+  columns: 3,
+  rows: 3,
   // interval: TradingView codes ('1', '15', '60', '240', 'D', 'W', 'M') or hours such as '4h'.
   charts: [
     { symbol: 'NASDAQ:QQQ', interval: 'D' },
@@ -17,7 +17,7 @@ const CONFIG = {
   ],
   // Draws each chart smaller and scales it up: fewer, wider candles and bigger axis text. 1 = TradingView's default.
   chartZoom: 1.4,
-  // Fills the first free cell with price and daily change of every chart symbol.
+  // Shows price and daily change of every chart symbol in the last column, over the free cells.
   showQuotes: true,
   locale: 'es',
   reloadEveryHours: 6,
@@ -77,14 +77,19 @@ function readSettings(config, query) {
   };
 }
 
-/** Adds the quotes cell only when the layout has a free cell, and adds rows when the charts don't fit. */
+/**
+ * Adds rows when the charts don't fit. The quotes cell is added only when the layout has free cells,
+ * and stretches down the last column over as many of them as it can (`quotesRowSpan`).
+ */
 function planGrid(settings, showQuotes) {
-  const withQuotes = showQuotes && settings.charts.length < settings.columns * settings.rows;
-  const cellCount = settings.charts.length + (withQuotes ? 1 : 0);
+  const freeCells = settings.columns * settings.rows - settings.charts.length;
+  const withQuotes = showQuotes && freeCells > 0;
+  const widgetCount = settings.charts.length + (withQuotes ? 1 : 0);
   return {
     withQuotes: withQuotes,
-    cellCount: cellCount,
-    rows: Math.max(settings.rows, Math.ceil(cellCount / settings.columns)),
+    quotesRowSpan: Math.min(Math.max(freeCells, 1), settings.rows),
+    widgetCount: widgetCount,
+    rows: Math.max(settings.rows, Math.ceil(widgetCount / settings.columns)),
   };
 }
 
@@ -171,8 +176,10 @@ function quotesZoom(cell, rowCount) {
   return Math.min(QUOTES_MAX_ZOOM, cell.clientHeight / (rowCount * QUOTES_ROW_PX + QUOTES_HEADER_PX));
 }
 
-function mountQuotes(grid, charts) {
+function mountQuotes(grid, charts, rowSpan) {
   const cell = element('section', 'cell');
+  cell.style.gridColumn = '-2 / -1';
+  cell.style.gridRow = 'span ' + rowSpan + ' / -1';
   grid.appendChild(cell);
   const zoom = element('div', 'zoomed');
   zoom.style.setProperty('--zoom', quotesZoom(cell, charts.length));
@@ -213,14 +220,14 @@ function main() {
   grid.style.setProperty('--columns', settings.columns);
   grid.style.setProperty('--rows', plan.rows);
 
-  if (plan.cellCount > CONFIG.maxWidgets) {
-    showNotice(plan.cellCount + ' widgets configured: more than ' + CONFIG.maxWidgets
+  if (plan.widgetCount > CONFIG.maxWidgets) {
+    showNotice(plan.widgetCount + ' widgets configured: more than ' + CONFIG.maxWidgets
       + ' may run the TV browser out of memory.');
   }
 
   const chartCells = settings.charts.map((chart) => addChartCell(grid, chart));
   if (plan.withQuotes) {
-    mountQuotes(grid, settings.charts);
+    mountQuotes(grid, settings.charts, plan.quotesRowSpan);
   }
 
   loadScript(TV_SCRIPT_URL).then(
