@@ -1,0 +1,119 @@
+:root {
+  --bg: #0b0e14;
+  --divider: #2a2e39;
+  --text: #e6e9ef;
+  --muted: #9aa4b2;
+  --warn: #ffb547;
+  --label-bg: rgba(11, 14, 20, 0.78);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.grid {
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  gap: 2px;
+  background: var(--divider);
+  grid-template-columns: repeat(var(--columns, 4), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows, 2), minmax(0, 1fr));
+}
+
+.cell {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.widget {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.label {
+  position: absolute;
+  top: 0.8vh;
+  left: 0.6vw;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  gap: 0.8vw;
+  padding: 0.4vh 0.8vw;
+  border-radius: 0.8vh;
+  background: var(--label-bg);
+  pointer-events: none;
+}
+
+.label__symbol {
+  font-size: 4vh;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.label__interval {
+  font-size: 2.8vh;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.status {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2vw;
+  text-align: center;
+  font-size: 2.8vh;
+  line-height: 1.4;
+  color: var(--warn);
+  background: var(--bg);
+}
+
+.notice {
+  position: fixed;
+  left: 50%;
+  bottom: 2vh;
+  z-index: 10;
+  transform: translateX(-50%);
+  padding: 1.2vh 2vw;
+  border-radius: 1vh;
+  font-size: 2.4vh;
+  color: #1a1200;
+  background: var(--warn);
+}
+
+/* The quotes widget has no font-size option, so it is rendered smaller and scaled up. */
+.quotes {
+  width: calc(100% / var(--zoom));
+  height: calc(100% / var(--zoom));
+  transform: scale(var(--zoom));
+  transform-origin: 0 0;
+}
+
+.quotes .tradingview-widget-container,
+.quotes .tradingview-widget-container__widget {
+  width: 100%;
+  height: 100%;
+}
