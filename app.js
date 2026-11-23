@@ -36,6 +36,8 @@ const QUOTES_SCRIPT_URL = EMBED_URL + 'embed-widget-market-overview.js';
 const QUOTES_ROW_PX = 60;
 const QUOTES_HEADER_PX = 24;
 const QUOTES_MAX_ZOOM = 2;
+// The only ranges Symbol Overview accepts; any other value leaves the chart loading forever.
+const RANGES = new Set(['1d', '5d', '1m', '3m', '6m', '12m', '60m', 'all']);
 const UP_COLOR = '#089981';
 const DOWN_COLOR = '#f23645';
 
@@ -54,7 +56,7 @@ function toTradingViewInterval(value) {
 
 /** A range that shows a few dozen candles of the given interval. */
 function defaultRange(interval) {
-  const ranges = { D: '3m', W: '12m', M: '60m' };
+  const ranges = { D: '1m', W: '12m', M: '60m' };
   if (ranges[interval]) {
     return ranges[interval];
   }
@@ -90,10 +92,11 @@ function readSettings(config, query) {
     rows: Math.max(1, layout ? Number(layout[2]) : config.rows),
     charts: baseCharts.map((chart, i) => {
       const interval = toTradingViewInterval(intervals[i] || chart.interval || lastInterval);
+      const range = String(ranges[i] || chart.range || '').toLowerCase();
       return {
         symbol: chart.symbol.toUpperCase(),
         interval: interval,
-        range: (ranges[i] || chart.range || defaultRange(interval)).toLowerCase(),
+        range: RANGES.has(range) ? range : defaultRange(interval),
       };
     }),
   };
