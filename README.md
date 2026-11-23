@@ -23,6 +23,7 @@ Everything lives in the `CONFIG` object at the top of `app.js`:
 | `loadTimeoutSeconds`, `retryAfterMinutes` | A widget that hasn't loaded after the timeout shows a message, and the page retries after that many minutes. |
 | `maxWidgets` | Above this number of widgets the page shows a memory warning. |
 | `locale` | TradingView language (`'es'`, `'en'`, ...). |
+| `pixelShiftPixels`, `pixelShiftEveryMinutes` | Moves the whole grid up to that many pixels every few minutes, so the static lines and labels don't leave a ghost image on the TV. `0` turns it off. |
 
 Commit and push to `main`; GitHub Pages publishes the change in about a minute.
 

@@ -25,6 +25,10 @@ const CONFIG = {
   loadTimeoutSeconds: 30,
   // The TV browser has little memory; more widgets than this shows a warning.
   maxWidgets: 8,
+  // Moves the whole grid up to this many pixels now and then, so lines and labels don't sit on the
+  // same pixels all day and leave a ghost image on the screen. 0 turns it off.
+  pixelShiftPixels: 4,
+  pixelShiftEveryMinutes: 5,
 };
 
 const EMBED_URL = 'https://s3.tradingview.com/external-embedding/';
@@ -276,6 +280,11 @@ function addFullscreenButton() {
   document.addEventListener('webkitfullscreenchange', sync);
 }
 
+function shiftGrid(grid, maxPixels) {
+  const offset = () => Math.round((Math.random() * 2 - 1) * maxPixels);
+  grid.style.transform = 'translate(' + offset() + 'px, ' + offset() + 'px)';
+}
+
 /** Builds the grid and starts its widgets, replacing any previous ones. */
 function renderPage() {
   const settings = readSettings(CONFIG, window.location.search);
@@ -309,6 +318,10 @@ function main() {
   addFullscreenButton();
   window.addEventListener('resize', fitQuotes);
   setInterval(refresh, CONFIG.reloadEveryHours * 3600 * 1000);
+  if (CONFIG.pixelShiftPixels > 0) {
+    const grid = document.getElementById('grid');
+    setInterval(() => shiftGrid(grid, CONFIG.pixelShiftPixels), CONFIG.pixelShiftEveryMinutes * 60 * 1000);
+  }
 }
 
 main();
