@@ -14,7 +14,7 @@ Everything lives in the `CONFIG` object at the top of `app.js`:
 | --- | --- |
 | `charts` | Charts in display order: `{ symbol: 'NASDAQ:NVDA', interval: 'D' }`. Use TradingView's `EXCHANGE:TICKER` (search the symbol on tradingview.com; it is in the page URL). |
 | `interval` | Candle size: `'1'`, `'5'`, `'15'`, `'60'`, `'240'` (minutes), `'D'`, `'W'`, `'M'`, or hours such as `'4h'`. |
-| `range` | Optional, per chart: how much history to show: `'1d'`, `'5d'`, `'1m'`, `'3m'`, `'6m'`, `'12m'`, `'60m'`, `'all'`. Defaults to `'1m'` for daily candles and `'5d'` for hourly ones; any other value falls back to the default. |
+| `range` | Optional, per chart: how much history to show: `'1d'`, `'5d'`, `'1m'`, `'3m'`, `'6m'`, `'12m'`, `'60m'`, `'all'`. Defaults to `'1m'` for daily candles and `'5d'` for 30-minute to 4-hour ones; any other value falls back to the default. |
 | `columns`, `rows` | Grid size. Rows are added when the charts don't fit. |
 | `chartFontSize` | Size of the chart axis numbers. |
 | `showQuotes` | Shows the price and daily % change of every chart symbol in the last column, stretched over the free cells. |

@@ -6,15 +6,13 @@ const CONFIG = {
   // interval: TradingView codes ('1', '15', '60', '240', 'D', 'W', 'M') or hours such as '4h'.
   // range (optional): how much history to show: '1d', '5d', '1m', '3m', '6m', '12m', '60m' or 'all'.
   charts: [
-    { symbol: 'NASDAQ:QQQ', interval: 'D' },
-    { symbol: 'NASDAQ:VXUS', interval: 'D' },
-    { symbol: 'AMEX:VOO', interval: 'D' },
-    { symbol: 'NASDAQ:NVDA', interval: 'D' },
-    { symbol: 'NASDAQ:SPCX', interval: 'D' },
-    // Anthropic listed on 2026-11-19, so a daily chart has only a few candles.
-    // Switch to 'D' once it has a few weeks of history.
-    { symbol: 'NASDAQ:ANT', interval: '60' },
-    { symbol: 'BINANCE:BTCUSDT', interval: '240' },
+    { symbol: 'NASDAQ:QQQ', interval: '30' },
+    { symbol: 'NASDAQ:VXUS', interval: '30' },
+    { symbol: 'AMEX:VOO', interval: '30' },
+    { symbol: 'NASDAQ:NVDA', interval: '30' },
+    { symbol: 'NASDAQ:SPCX', interval: '30' },
+    { symbol: 'NASDAQ:ANT', interval: '30' },
+    { symbol: 'BINANCE:BTCUSDT', interval: '60' },
   ],
   chartFontSize: 18,
   // Shows price and daily change of every chart symbol in the last column, over the free cells.
@@ -60,7 +58,7 @@ function defaultRange(interval) {
   if (ranges[interval]) {
     return ranges[interval];
   }
-  return Number(interval) >= 60 ? '5d' : '1d';
+  return Number(interval) >= 30 ? '5d' : '1d';
 }
 
 function intervalLabel(interval) {
