@@ -15,6 +15,8 @@ const CONFIG = {
     { symbol: 'BINANCE:BTCUSDT', interval: '60' },
   ],
   chartFontSize: 18,
+  // Simple moving average over this many candles of each chart. 0 hides it.
+  movingAverage: 20,
   // Shows price and daily change of every chart symbol in the last column, over the free cells.
   showQuotes: true,
   locale: 'es',
@@ -42,6 +44,7 @@ const QUOTES_MAX_ZOOM = 2;
 const RANGES = new Set(['1d', '5d', '1m', '3m', '6m', '12m', '60m', 'all']);
 const UP_COLOR = '#089981';
 const DOWN_COLOR = '#f23645';
+const MA_COLOR = '#f7c948';
 
 function splitList(value) {
   return value ? value.split(',').map((item) => item.trim()).filter(Boolean) : [];
@@ -215,7 +218,10 @@ function mountChart(cell, chart) {
     locale: CONFIG.locale,
     fontSize: String(CONFIG.chartFontSize),
     showVolume: false,
-    showMA: false,
+    showMA: CONFIG.movingAverage > 0,
+    maLength: CONFIG.movingAverage,
+    maLineColor: MA_COLOR,
+    maLineWidth: 2,
     scalePosition: 'right',
     scaleMode: 'Normal',
     upColor: UP_COLOR,
