@@ -1,8 +1,8 @@
 'use strict';
 
 const CONFIG = {
-  columns: 3,
-  rows: 4,
+  columns: 4,
+  rows: 3,
   // interval: TradingView codes ('1', '15', '60', '240', 'D', 'W', 'M') or hours such as '4h'.
   // range (optional): how much history to show: '1d', '5d', '1m', '3m', '6m', '12m', '60m' or 'all'.
   // movingAverage (optional): overrides the default moving average length for that chart.
