@@ -14,8 +14,8 @@ const CONFIG = {
     { symbol: 'NASDAQ:SPCX', interval: '30' },
     { symbol: 'NASDAQ:ANT', interval: '30' },
     { symbol: 'BINANCE:BTCUSDT', interval: '60' },
-    // Long-term trend of the S&P 500: daily candles with the 200-day moving average.
-    { symbol: 'AMEX:VOO', interval: 'D', range: '12m', movingAverage: 200 },
+    // Long-term trend of the Nasdaq 100: daily candles with the 200-day moving average.
+    { symbol: 'NASDAQ:QQQ', interval: 'D', range: '12m', movingAverage: 200 },
   ],
   chartFontSize: 18,
   // Simple moving average over this many candles of each chart. 0 hides it.
