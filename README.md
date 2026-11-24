@@ -15,15 +15,13 @@ Everything lives in the `CONFIG` object at the top of `app.js`:
 | `charts` | Charts in display order: `{ symbol: 'NASDAQ:NVDA', interval: 'D' }`. Use TradingView's `EXCHANGE:TICKER` (search the symbol on tradingview.com; it is in the page URL). |
 | `interval` | Candle size: `'1'`, `'5'`, `'15'`, `'60'`, `'240'` (minutes), `'D'`, `'W'`, `'M'`, or hours such as `'4h'`. |
 | `range` | Optional, per chart: how much history to show: `'1d'`, `'5d'`, `'1m'`, `'3m'`, `'6m'`, `'12m'`, `'60m'`, `'all'`. Defaults to `'1m'` for daily candles and `'5d'` for 30-minute to 4-hour ones; any other value falls back to the default. |
-| `movingAverage` (per chart) | Optional: overrides the default moving average length for that chart, e.g. `200` on daily candles for the 200-day average. |
+| `movingAverage` | Optional, per chart: draws a simple moving average over that many candles, e.g. `200` on daily candles for the 200-day average. Such a chart uses TradingView's heavier Advanced Chart widget, because the default widget drops its average on the first data update. |
 | `columns`, `rows` | Grid size. Rows are added when the charts and the calendar don't fit. |
 | `chartFontSize` | Size of the chart axis numbers. |
-| `movingAverage` | Draws a simple moving average over that many candles of each chart (20 candles of 30 minutes is about 10 market hours). `0` hides it. |
 | `showQuotes` | Shows the price and daily % change of every chart symbol in the last column, stretched over the free cells. |
 | `quoteSymbols` | Extra symbols shown only in the quotes list, for market context (VIX, 10-year Treasury yield, dollar index). Some symbols, such as `CBOE:VIX` or `TVC:US10Y`, show no data in free widgets. |
 | `showCalendar` | Adds a cell with the upcoming medium and high importance US economic events. |
 | `staggerSeconds` | Delay between widgets at start-up, so the TV doesn't load them all at once. |
-| `reloadEveryHours` | Reloads the widgets so the TV browser doesn't hang after running all day (in full screen, without leaving it). |
 | `loadTimeoutSeconds`, `retryAfterMinutes` | A widget that hasn't loaded after the timeout shows a message, and the page retries after that many minutes. |
 | `maxWidgets` | Above this number of widgets the page shows a memory warning. |
 | `locale` | TradingView language (`'es'`, `'en'`, ...). |

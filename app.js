@@ -5,7 +5,8 @@ const CONFIG = {
   rows: 3,
   // interval: TradingView codes ('1', '15', '60', '240', 'D', 'W', 'M') or hours such as '4h'.
   // range (optional): how much history to show: '1d', '5d', '1m', '3m', '6m', '12m', '60m' or 'all'.
-  // movingAverage (optional): overrides the default moving average length for that chart.
+  // movingAverage (optional): draws a simple moving average over that many candles, using the
+  // Advanced Chart widget, because Symbol Overview drops its average on the first data update.
   charts: [
     { symbol: 'NASDAQ:QQQ', interval: '30' },
     { symbol: 'NASDAQ:VXUS', interval: '30' },
@@ -18,8 +19,6 @@ const CONFIG = {
     { symbol: 'NASDAQ:QQQ', interval: 'D', range: '12m', movingAverage: 200 },
   ],
   chartFontSize: 18,
-  // Simple moving average over this many candles of each chart. 0 hides it.
-  movingAverage: 20,
   // Shows price and daily change of every chart symbol in the last column, over the free cells.
   showQuotes: true,
   // Market context shown only in the quotes list: volatility (VIX), 10-year Treasury yield
@@ -30,7 +29,6 @@ const CONFIG = {
   locale: 'es',
   // Widgets start one after another so the TV doesn't boot them all at once.
   staggerSeconds: 1,
-  reloadEveryHours: 6,
   retryAfterMinutes: 5,
   loadTimeoutSeconds: 30,
   // Samsung caps a TV app at 380 MB; more widgets than this shows a warning.
@@ -43,6 +41,7 @@ const CONFIG = {
 
 const EMBED_URL = 'https://s3.tradingview.com/external-embedding/';
 const CHART_SCRIPT_URL = EMBED_URL + 'embed-widget-symbol-overview.js';
+const ADVANCED_CHART_SCRIPT_URL = EMBED_URL + 'embed-widget-advanced-chart.js';
 const QUOTES_SCRIPT_URL = EMBED_URL + 'embed-widget-market-overview.js';
 const CALENDAR_SCRIPT_URL = EMBED_URL + 'embed-widget-events.js';
 // Measured size of the Market Overview list, used to zoom it until every row fills the cell.
@@ -53,7 +52,6 @@ const QUOTES_MAX_ZOOM = 2;
 const RANGES = new Set(['1d', '5d', '1m', '3m', '6m', '12m', '60m', 'all']);
 const UP_COLOR = '#089981';
 const DOWN_COLOR = '#f23645';
-const MA_COLOR = '#f7c948';
 
 function splitList(value) {
   return value ? value.split(',').map((item) => item.trim()).filter(Boolean) : [];
@@ -111,7 +109,7 @@ function readSettings(config, query) {
         symbol: chart.symbol.toUpperCase(),
         interval: interval,
         range: RANGES.has(range) ? range : defaultRange(interval),
-        movingAverage: chart.movingAverage ?? config.movingAverage,
+        movingAverage: chart.movingAverage || 0,
       };
     }),
   };
@@ -214,7 +212,7 @@ function addChartLabel(cell, chart) {
   cell.appendChild(label);
 }
 
-function mountChart(cell, chart) {
+function mountOverviewChart(cell, chart) {
   const widgetInterval = /^[DWM]$/.test(chart.interval) ? '1' + chart.interval : chart.interval;
   mountEmbed(cell, cell, CHART_SCRIPT_URL, {
     symbols: [[tickerOf(chart.symbol), chart.symbol + '|' + chart.range.toUpperCase()]],
@@ -229,10 +227,6 @@ function mountChart(cell, chart) {
     locale: CONFIG.locale,
     fontSize: String(CONFIG.chartFontSize),
     showVolume: false,
-    showMA: chart.movingAverage > 0,
-    maLength: chart.movingAverage,
-    maLineColor: MA_COLOR,
-    maLineWidth: 2,
     scalePosition: 'right',
     scaleMode: 'Normal',
     upColor: UP_COLOR,
@@ -242,6 +236,36 @@ function mountChart(cell, chart) {
     wickUpColor: UP_COLOR,
     wickDownColor: DOWN_COLOR,
   }, chart.symbol);
+}
+
+function mountAdvancedChart(cell, chart) {
+  mountEmbed(cell, cell, ADVANCED_CHART_SCRIPT_URL, {
+    symbol: chart.symbol,
+    interval: chart.interval,
+    range: chart.range.toUpperCase(),
+    studies: [{ id: 'MASimple@tv-basicstudies', inputs: { length: chart.movingAverage } }],
+    autosize: true,
+    theme: 'dark',
+    style: '1',
+    locale: CONFIG.locale,
+    backgroundColor: '#0b0e14',
+    gridColor: 'rgba(0, 0, 0, 0)',
+    hide_top_toolbar: true,
+    hide_side_toolbar: true,
+    hide_legend: true,
+    hide_volume: true,
+    allow_symbol_change: false,
+    save_image: false,
+    calendar: false,
+  }, chart.symbol);
+}
+
+function mountChart(cell, chart) {
+  if (chart.movingAverage > 0) {
+    mountAdvancedChart(cell, chart);
+  } else {
+    mountOverviewChart(cell, chart);
+  }
 }
 
 function quotesZoom(cell, rowCount) {
@@ -351,7 +375,6 @@ function main() {
   }
   addFullscreenButton();
   window.addEventListener('resize', fitQuotes);
-  setInterval(refresh, CONFIG.reloadEveryHours * 3600 * 1000);
   if (CONFIG.pixelShiftPixels > 0) {
     const grid = document.getElementById('grid');
     setInterval(() => shiftGrid(grid, CONFIG.pixelShiftPixels), CONFIG.pixelShiftEveryMinutes * 60 * 1000);
