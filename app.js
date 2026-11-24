@@ -2,9 +2,10 @@
 
 const CONFIG = {
   columns: 3,
-  rows: 3,
+  rows: 4,
   // interval: TradingView codes ('1', '15', '60', '240', 'D', 'W', 'M') or hours such as '4h'.
   // range (optional): how much history to show: '1d', '5d', '1m', '3m', '6m', '12m', '60m' or 'all'.
+  // movingAverage (optional): overrides the default moving average length for that chart.
   charts: [
     { symbol: 'NASDAQ:QQQ', interval: '30' },
     { symbol: 'NASDAQ:VXUS', interval: '30' },
@@ -13,20 +14,27 @@ const CONFIG = {
     { symbol: 'NASDAQ:SPCX', interval: '30' },
     { symbol: 'NASDAQ:ANT', interval: '30' },
     { symbol: 'BINANCE:BTCUSDT', interval: '60' },
+    // Long-term trend of the S&P 500: daily candles with the 200-day moving average.
+    { symbol: 'AMEX:VOO', interval: 'D', range: '12m', movingAverage: 200 },
   ],
   chartFontSize: 18,
   // Simple moving average over this many candles of each chart. 0 hides it.
   movingAverage: 20,
   // Shows price and daily change of every chart symbol in the last column, over the free cells.
   showQuotes: true,
+  // Market context shown only in the quotes list: volatility (VIX), 10-year Treasury yield
+  // (FRED's daily close; the live TVC:US10Y has no data in free widgets) and the US dollar index.
+  quoteSymbols: ['CAPITALCOM:VIX', 'FRED:DGS10', 'CAPITALCOM:DXY'],
+  // Upcoming medium and high importance US economic events (Fed, inflation, jobs).
+  showCalendar: true,
   locale: 'es',
   // Widgets start one after another so the TV doesn't boot them all at once.
   staggerSeconds: 1,
   reloadEveryHours: 6,
   retryAfterMinutes: 5,
   loadTimeoutSeconds: 30,
-  // The TV browser has little memory; more widgets than this shows a warning.
-  maxWidgets: 8,
+  // Samsung caps a TV app at 380 MB; more widgets than this shows a warning.
+  maxWidgets: 10,
   // Moves the whole grid up to this many pixels now and then, so lines and labels don't sit on the
   // same pixels all day and leave a ghost image on the screen. 0 turns it off.
   pixelShiftPixels: 4,
@@ -36,6 +44,7 @@ const CONFIG = {
 const EMBED_URL = 'https://s3.tradingview.com/external-embedding/';
 const CHART_SCRIPT_URL = EMBED_URL + 'embed-widget-symbol-overview.js';
 const QUOTES_SCRIPT_URL = EMBED_URL + 'embed-widget-market-overview.js';
+const CALENDAR_SCRIPT_URL = EMBED_URL + 'embed-widget-events.js';
 // Measured size of the Market Overview list, used to zoom it until every row fills the cell.
 const QUOTES_ROW_PX = 60;
 const QUOTES_HEADER_PX = 24;
@@ -102,19 +111,21 @@ function readSettings(config, query) {
         symbol: chart.symbol.toUpperCase(),
         interval: interval,
         range: RANGES.has(range) ? range : defaultRange(interval),
+        movingAverage: chart.movingAverage ?? config.movingAverage,
       };
     }),
   };
 }
 
 /**
- * Adds rows when the charts don't fit. The quotes cell is added only when the layout has free cells,
- * and stretches down the last column over as many of them as it can (`quotesRowSpan`).
+ * Adds rows when the charts and the calendar don't fit. The quotes cell is added only when the layout
+ * has free cells, and stretches down the last column over as many of them as it can (`quotesRowSpan`).
  */
-function planGrid(settings, showQuotes) {
-  const freeCells = settings.columns * settings.rows - settings.charts.length;
+function planGrid(settings, showQuotes, showCalendar) {
+  const flowCells = settings.charts.length + (showCalendar ? 1 : 0);
+  const freeCells = settings.columns * settings.rows - flowCells;
   const withQuotes = showQuotes && freeCells > 0;
-  const widgetCount = settings.charts.length + (withQuotes ? 1 : 0);
+  const widgetCount = flowCells + (withQuotes ? 1 : 0);
   return {
     withQuotes: withQuotes,
     quotesRowSpan: Math.min(Math.max(freeCells, 1), settings.rows),
@@ -218,8 +229,8 @@ function mountChart(cell, chart) {
     locale: CONFIG.locale,
     fontSize: String(CONFIG.chartFontSize),
     showVolume: false,
-    showMA: CONFIG.movingAverage > 0,
-    maLength: CONFIG.movingAverage,
+    showMA: chart.movingAverage > 0,
+    maLength: chart.movingAverage,
     maLineColor: MA_COLOR,
     maLineWidth: 2,
     scalePosition: 'right',
@@ -244,9 +255,9 @@ function fitQuotes() {
   }
 }
 
-function mountQuotes(cell, charts) {
+function mountQuotes(cell, symbols) {
   const zoom = element('div', 'zoomed');
-  zoom.dataset.rows = charts.length;
+  zoom.dataset.rows = symbols.length;
   cell.appendChild(zoom);
   fitQuotes();
   mountEmbed(cell, zoom, QUOTES_SCRIPT_URL, {
@@ -260,9 +271,21 @@ function mountQuotes(cell, charts) {
     locale: CONFIG.locale,
     tabs: [{
       title: 'Hoy',
-      symbols: charts.map((chart) => ({ s: chart.symbol })),
+      symbols: symbols.map((symbol) => ({ s: symbol })),
     }],
   }, 'Quotes');
+}
+
+function mountCalendar(cell) {
+  mountEmbed(cell, cell, CALENDAR_SCRIPT_URL, {
+    width: '100%',
+    height: '100%',
+    colorTheme: 'dark',
+    isTransparent: true,
+    locale: CONFIG.locale,
+    importanceFilter: '0,1',
+    countryFilter: 'us',
+  }, 'Calendar');
 }
 
 function requestFullscreen() {
@@ -294,7 +317,7 @@ function shiftGrid(grid, maxPixels) {
 /** Builds the grid and starts its widgets, replacing any previous ones. */
 function renderPage() {
   const settings = readSettings(CONFIG, window.location.search);
-  const plan = planGrid(settings, CONFIG.showQuotes);
+  const plan = planGrid(settings, CONFIG.showQuotes, CONFIG.showCalendar);
   const grid = document.getElementById('grid');
   grid.textContent = '';
   grid.style.setProperty('--columns', settings.columns);
@@ -305,11 +328,16 @@ function renderPage() {
     addChartLabel(cell, chart);
     return () => mountChart(cell, chart);
   });
+  if (CONFIG.showCalendar) {
+    const cell = addCell(grid);
+    mounts.push(() => mountCalendar(cell));
+  }
   if (plan.withQuotes) {
     const cell = addCell(grid);
     cell.style.gridColumn = '-2 / -1';
     cell.style.gridRow = 'span ' + plan.quotesRowSpan + ' / -1';
-    mounts.push(() => mountQuotes(cell, settings.charts));
+    const symbols = new Set(settings.charts.map((chart) => chart.symbol).concat(CONFIG.quoteSymbols));
+    mounts.push(() => mountQuotes(cell, Array.from(symbols)));
   }
   mounts.forEach((mount, i) => setTimeout(mount, i * CONFIG.staggerSeconds * 1000));
   return plan;
