@@ -21,6 +21,7 @@ Everything lives in the `CONFIG` object at the top of `app.js`:
 | `showQuotes` | Shows the price and daily % change of every chart symbol in the last column, stretched over the free cells. |
 | `quoteSymbols` | Extra symbols shown only in the quotes list, for market context (VIX, 10-year Treasury yield, dollar index). Some symbols, such as `CBOE:VIX` or `TVC:US10Y`, show no data in free widgets. |
 | `showCalendar` | Adds a cell with the upcoming medium and high importance US economic events. |
+| `portfolioRefreshSeconds` | How often the purchases panel refreshes its prices. |
 | `staggerSeconds` | Delay between widgets at start-up, so the TV doesn't load them all at once. |
 | `loadTimeoutSeconds`, `retryAfterMinutes` | A widget that hasn't loaded after the timeout shows a message, and the page retries after that many minutes. |
 | `maxWidgets` | Above this number of widgets the page shows a memory warning. |
@@ -47,6 +48,16 @@ Examples:
 - Three charts plus the quotes cell: `https://danielrincon-m.github.io/tv-dashboard/?s=NASDAQ:NVDA,NASDAQ:ANT,BINANCE:BTCUSDT&tf=D,1h,4h&layout=2x2`
 
 The quotes cell only appears when the layout has a free cell left after the charts.
+
+## Your purchases
+
+Add your purchases after a `#` in the link, and the calendar cell shows your average price, the current price and your gain per symbol, plus the total. Each purchase is the amount spent `@` the price paid; join a symbol's purchases with `+` and symbols with `,`:
+
+`https://danielrincon-m.github.io/tv-dashboard/#buy=QQQ:1000@600+500@580,BTCUSDT:250@60000`
+
+- Use the ticker shown on a chart (`QQQ`, `BTCUSDT`), or `EXCHANGE:TICKER` for a symbol without a chart.
+- Everything after `#` stays in the browser: it is never sent to the server nor stored in this public repo. Keep the link as a bookmark on the TV.
+- Prices come from TradingView's market screener, which needs no key but is not an official API: if it stops answering, the panel shows `—` and keeps your averages.
 
 ## Open it on the TV
 

@@ -24,8 +24,10 @@ const CONFIG = {
   // Market context shown only in the quotes list: volatility (VIX), 10-year Treasury yield
   // (FRED's daily close; the live TVC:US10Y has no data in free widgets) and the US dollar index.
   quoteSymbols: ['CAPITALCOM:VIX', 'FRED:DGS10', 'CAPITALCOM:DXY'],
-  // Upcoming medium and high importance US economic events (Fed, inflation, jobs).
+  // Upcoming medium and high importance US economic events (Fed, inflation, jobs). Its cell shows
+  // your purchases instead when the link carries them (see readPositions).
   showCalendar: true,
+  portfolioRefreshSeconds: 60,
   locale: 'es',
   // Widgets start one after another so the TV doesn't boot them all at once.
   staggerSeconds: 1,
@@ -44,6 +46,8 @@ const CHART_SCRIPT_URL = EMBED_URL + 'embed-widget-symbol-overview.js';
 const ADVANCED_CHART_SCRIPT_URL = EMBED_URL + 'embed-widget-advanced-chart.js';
 const QUOTES_SCRIPT_URL = EMBED_URL + 'embed-widget-market-overview.js';
 const CALENDAR_SCRIPT_URL = EMBED_URL + 'embed-widget-events.js';
+// TradingView's own market screener: no key and readable from a web page, but undocumented.
+const SCANNER_URL = 'https://scanner.tradingview.com/global/scan';
 // Measured size of the Market Overview list, used to zoom it until every row fills the cell.
 const QUOTES_ROW_PX = 60;
 const QUOTES_HEADER_PX = 24;
@@ -113,6 +117,27 @@ function readSettings(config, query) {
       };
     }),
   };
+}
+
+/**
+ * Reads purchases from the link's fragment, e.g. `#buy=QQQ:1000@600+500@580,BTCUSDT:250@60000`:
+ * each purchase is the amount spent @ the price paid, joined by `+`. The fragment is never sent to the server, so purchases stay
+ * out of the public repo. A ticker resolves to the chart with that ticker; use `EXCHANGE:TICKER`
+ * for a symbol without a chart.
+ */
+function readPositions(hash, charts) {
+  const match = /(?:^#|&)buy=([^&]*)/.exec(hash);
+  return splitList(match ? decodeURIComponent(match[1]) : '').map((entry) => {
+    const split = entry.lastIndexOf(':');
+    const name = entry.slice(0, split).toUpperCase();
+    const purchases = entry.slice(split + 1).split('+').map((purchase) => purchase.split('@').map(Number));
+    const chart = charts.find((candidate) => tickerOf(candidate.symbol) === name);
+    return {
+      symbol: chart ? chart.symbol : name,
+      quantity: purchases.reduce((total, [amount, price]) => total + amount / price, 0),
+      cost: purchases.reduce((total, [amount]) => total + amount, 0),
+    };
+  }).filter((position) => position.quantity > 0 && Number.isFinite(position.cost));
 }
 
 /**
@@ -312,6 +337,89 @@ function mountCalendar(cell) {
   }, 'Calendar');
 }
 
+async function fetchPrices(symbols) {
+  const response = await fetch(SCANNER_URL, {
+    method: 'POST',
+    body: JSON.stringify({ symbols: { tickers: symbols }, columns: ['close'] }),
+  });
+  const body = await response.json();
+  return new Map(body.data.map((row) => [row.s, row.d[0]]));
+}
+
+function formatNumber(value, digits) {
+  return value.toLocaleString(CONFIG.locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+function formatMoney(value) {
+  return formatNumber(value, Math.abs(value) >= 1000 ? 0 : 2);
+}
+
+function addRow(parent, cells) {
+  const row = document.createElement('tr');
+  cells.forEach(([text, className]) => row.appendChild(element('td', className || '', text)));
+  parent.appendChild(row);
+}
+
+/** Cells for a gain: signed money and percentage, colored by direction; dashes when unknown. */
+function gainCells(cost, value) {
+  if (value === null) {
+    return [['—'], ['—']];
+  }
+  const gain = value - cost;
+  const className = gain >= 0 ? 'up' : 'down';
+  const sign = gain >= 0 ? '+' : '';
+  return [[sign + formatNumber(gain / cost * 100, 1) + ' %', className], [sign + formatNumber(gain, 0), className]];
+}
+
+function renderPortfolio(body, positions, prices) {
+  body.textContent = '';
+  positions.forEach((position) => {
+    const price = prices.get(position.symbol) ?? null;
+    addRow(body, [
+      [tickerOf(position.symbol)],
+      [formatMoney(position.cost / position.quantity)],
+      [price === null ? '—' : formatMoney(price)],
+      ...gainCells(position.cost, price === null ? null : price * position.quantity),
+    ]);
+  });
+  const cost = positions.reduce((total, position) => total + position.cost, 0);
+  const priced = positions.every((position) => prices.has(position.symbol));
+  const value = priced ? positions.reduce((total, p) => total + prices.get(p.symbol) * p.quantity, 0) : null;
+  addRow(body, [
+    ['Total', 'portfolio__total'],
+    [formatMoney(cost), 'portfolio__total'],
+    [value === null ? '—' : formatMoney(value), 'portfolio__total'],
+    ...gainCells(cost, value),
+  ]);
+}
+
+/** Shows average cost, current price and gain per purchased symbol; prices refresh until the cell is replaced. */
+function mountPortfolio(cell, positions) {
+  const table = element('table', 'portfolio');
+  const head = document.createElement('thead');
+  addRow(head, [[''], ['Medio'], ['Actual'], ['%'], ['$']]);
+  const body = document.createElement('tbody');
+  table.append(head, body);
+  cell.appendChild(table);
+  let prices = new Map();
+  const update = async () => {
+    try {
+      prices = await fetchPrices(positions.map((position) => position.symbol));
+    } catch (error) {
+      console.warn('Prices did not load; showing the last ones.', error);
+    }
+    renderPortfolio(body, positions, prices);
+  };
+  update();
+  const timer = setInterval(() => {
+    if (cell.isConnected) {
+      update();
+    } else {
+      clearInterval(timer);
+    }
+  }, CONFIG.portfolioRefreshSeconds * 1000);
+}
+
 function requestFullscreen() {
   const root = document.documentElement;
   (root.requestFullscreen || root.webkitRequestFullscreen).call(root);
@@ -341,7 +449,9 @@ function shiftGrid(grid, maxPixels) {
 /** Builds the grid and starts its widgets, replacing any previous ones. */
 function renderPage() {
   const settings = readSettings(CONFIG, window.location.search);
-  const plan = planGrid(settings, CONFIG.showQuotes, CONFIG.showCalendar);
+  const positions = readPositions(window.location.hash, settings.charts);
+  const showPanel = CONFIG.showCalendar || positions.length > 0;
+  const plan = planGrid(settings, CONFIG.showQuotes, showPanel);
   const grid = document.getElementById('grid');
   grid.textContent = '';
   grid.style.setProperty('--columns', settings.columns);
@@ -352,9 +462,9 @@ function renderPage() {
     addChartLabel(cell, chart);
     return () => mountChart(cell, chart);
   });
-  if (CONFIG.showCalendar) {
+  if (showPanel) {
     const cell = addCell(grid);
-    mounts.push(() => mountCalendar(cell));
+    mounts.push(positions.length ? () => mountPortfolio(cell, positions) : () => mountCalendar(cell));
   }
   if (plan.withQuotes) {
     const cell = addCell(grid);
